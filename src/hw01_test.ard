@@ -1,0 +1,8 @@
+\import hw01
+\import lect02
+
+\func test_second : second 1 2 3 = 2 => idp
+\func test_apply : apply suc 1 = 2 => idp
+\func test_compose : compose (4+) (3*) 1 = 7 => idp
+\func test_flip : flip div 1 2 = 2 => idp
+\func test_second' : second' 2 3 = 3 => idp
