@@ -7,23 +7,66 @@
    if True t _ = t
    if False _ e = e
 -}
+\func if (condition : Bool) {A : \Type } (then : A) (else : A) : A \elim condition
+  | true => then
+  | false => else
 
 -- 2. Определите || через if.
 
-\func \infixr 2 || (x y : Bool) : Bool => {?}
+\func \infixr 2 || (x y : Bool) : Bool => if x x y
 
 -- 3. Определите возведение в степень и факториал для натуральных чисел.
 
-\func \infixr 8 ^ (x y : Nat) => {?}
+\func \infixr 8 ^ (x y : Nat) : Nat \elim y
+  | 0 => 1
+  | suc y => x ^ y * x
 
-\func fac (x : Nat) => {?}
+\func fac (x : Nat) : Nat
+  | 0 => 1
+  | suc x => (fac x) * suc x
 
 -- 4. Определите mod и gcd.
 
-\func mod (x y : Nat) => {?}
+\func mod (x y : Nat) => mod' (div x y) x y
+    \where
+      \func mod' (s x y : Nat) : Nat \elim s
+        | 0 => x
+        | suc s => if (x < y) x (mod' s (x - y) y)
 
-\func gcd (x y : Nat) => {?}
+\func gcd (x y : Nat) => gcd' (x + y) x y
+    \where
+      \func gcd' (s x y : Nat) : Nat
+        | 0, x,_ => x
+        | suc s, 0, y => y
+        | suc s, x, y => gcd' s (mod y x) x
 
 -- 5. Определите (полиморфный) reverse для списков.
 
+\func reverse {A : \Type } (list : List A) => reverse' list nil
+    \where
+      \func reverse' {A : \Type } (list reversed : List A) : List A \elim list
+        | nil => reversed
+        | cons a tail => reverse' tail (cons a reversed)
+
 -- 6. Реализуйте любой (but choose wisely) алгоритм сортировки. Функцию сравнения можно принимать в качестве аргумента.
+
+\func extract_min {A : \Type} (list : List A) (current_min : A) (less : A -> A -> Bool) : \Sigma A (List A) => extract_min' list less current_min nil
+  \where
+    \func extract_min' {A : \Type} (list : List A) (less : A -> A -> Bool) (min : A) (rest : List A) : \Sigma A (List A) \elim list
+      | nil => (min, rest)
+      | cons a tail => if (less min a)
+        (extract_min' tail less min (cons a rest))
+        (extract_min' tail less a (cons min rest))
+
+\func length {A : \Type } (list : List A)  : Nat
+  | nil => 0
+  | cons _ tail => length tail + 1
+
+-- selection sort
+\func sort {A : \Type} (list : List A) (less : A -> A -> Bool) : List A => sort' list less (length list)
+  \where
+    \func sort' {A : \Type} (list : List A) (less : A -> A -> Bool) (max_depth : Nat) : List A
+      | nil, _, _ => nil
+      | _, _, 0 => nil
+      | cons a tail, less, suc max_depth => \let (min, rest) => extract_min tail a less
+                                            \in cons min (sort' rest less max_depth)

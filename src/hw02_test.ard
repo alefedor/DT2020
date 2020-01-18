@@ -1,0 +1,36 @@
+\import  hw02
+\import lect02 (<, cons, false, nil, true)
+
+\func test_if_true : if true 1 2 = 1 => idp
+\func test_if_false : if false 1 2 = 2 => idp
+
+\func test_||_both_false : false || false = false => idp
+\func test_||_left_true : true || false = true => idp
+\func test_||_right_true : false || true = true => idp
+\func test_||_both_true : true || true = true => idp
+
+\func test_^_zero : 3 ^ 0 = 1 => idp
+\func test_^ : 3 ^ 2 = 9 => idp
+
+\func test_fac_zero : fac 0 = 1 => idp
+\func test_fac : fac 3 = 6 => idp
+
+\func test_mod_less : mod 5 10 = 5 => idp
+\func test_mod : mod 228 7 = 4 => idp
+
+\func test_gcd_second_zero : gcd 5 0 = 5 => idp
+\func test_gcd_first_zero : gcd 0 5 = 5 => idp
+\func test_gcd : gcd 15 25 = 5 => idp
+
+\func test_reverse_nil : reverse {Nat} nil = nil => idp
+\func test_revese : reverse (cons 1 (cons 2 (cons 3 nil))) = cons 3 (cons 2 (cons 1 nil)) => idp
+
+\func test_extract_min_nil : extract_min nil 1 (<) = (1, nil) => idp
+\func test_extract_min_current : extract_min (cons 2 nil) 1 (<) = (1, cons 2 nil) => idp
+\func test_extract_min_list : extract_min (cons 2 (cons 0 nil)) 1 (<) = (0, cons 1 (cons 2 nil)) => idp
+
+\func test_length_nil : length {Nat} nil = 0 => idp
+\func test_length : length  (cons 3 (cons 1 (cons 2 nil))) = 3 => idp
+
+\func test_sort_nil : sort nil (<) = nil => idp
+\func test_sort : sort (cons 3 (cons 1 (cons 2 nil))) (<) = (cons 1 (cons 2 (cons 3 nil))) => idp
