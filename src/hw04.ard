@@ -11,20 +11,61 @@
   | suc x, 0 => false
   | suc x, suc y => x < y
 
-\func lookup => {?}
+\func contradiction (n : Nat) (proof : T (n < 0)) : Empty \elim n
+  | 0 => proof
+  | suc n => proof
+
+\func lookup {A : \Type} (list : List A) (n : Nat) (proof : T (n < length list)) : A \elim list, n
+  | cons a l, 0 => a
+  | cons a l, suc n => lookup l n proof
+  | nil, n => absurd (contradiction n proof)
 
 -- 2. Реализуйте аналоги функции replicate для vec и Vec (эта функция создает список заданной длины, состоящий из повторений данного элемента).
 
+\func replicate {A : \Type} (a : A) (n : Nat) : vec A n \elim n
+  | 0 => ()
+  | suc n => (a, replicate a n)
+
+\func replicate' {A : \Type} (a : A) (n : Nat) : Vec A n \elim n
+  | 0 => vnil
+  | suc n => vcons a (replicate' a n)
+
 -- 3. Реализуйте аналоги функции map для vec и Vec.
+
+\func map {A B : \Type} {n : Nat} (f : A -> B) (list : vec A n) : vec B n \elim n, list
+  | 0, list => ()
+  | suc n, (a, tail) => (f a, map f tail)
+
+\func map' {A B : \Type} {n : Nat} (f : A -> B) (list : Vec A n) : Vec B n \elim n, list
+  | 0, list => vnil
+  | suc n, vcons a tail => vcons (f a) (map' f tail)
 
 -- 4. Реализуйте аналоги функции zipWith для vec и Vec.
 --    Функция должна принимать вектора одинаковой длины.
+
+\func zipWith {A B : \Type} {n : Nat} (xs : vec A n) (ys : vec B n) : vec (\Sigma A B) n \elim n, xs, ys
+  | 0, _, _ => ()
+  | suc n, (x, xs), (y, ys) => ((x, y), zipWith xs ys)
+
+\func zipWith' {A B : \Type} {n : Nat} (xs : Vec A n) (ys : Vec B n) : Vec (\Sigma A B) n \elim n, xs, ys
+  | 0, _, _ => vnil
+  | suc n, vcons x xs, vcons y ys => vcons (x, y) (zipWith' xs ys)
 
 -- 5. Функции Fin n → A соответствуют спискам элементов A длины n.
 --    Функция, преобразующая Vec A n в Fin n → A, была реализована на лекции.
 --    Реализуйте обратную функцию.
 
-\func coin {A : \Type} {n : Nat} (f : Fin n -> A) : Vec A n => {?}
+\func toFin (n : Nat) : Fin (suc n)
+  | 0 => fzero
+  | suc n => fsuc (toFin n)
+
+\func increaseSetSize {n : Nat} (a : Fin n) : Fin (suc n) \elim n, a
+  | suc n, fsuc a => fsuc (increaseSetSize a)
+  | suc n, fzero => fzero
+
+\func coin {A : \Type} {n : Nat} (f : Fin n -> A) : Vec A n \elim n
+  | 0 => vnil
+  | suc n => vcons (f (toFin n)) (coin (\lam (g : Fin n) => f (increaseSetSize g)))
 
 -- 6. Определите тип матриц и ряд функций над ними.
 

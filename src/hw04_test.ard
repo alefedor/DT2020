@@ -1,0 +1,24 @@
+\import Utils
+\import hw04
+\import lect04 (Fin, fsuc, fzero, vec)
+
+\func test_lookup_head : lookup (cons 1 (cons 2 (cons 3 nil))) 0 () = 1 => idp
+\func test_lookup_middle : lookup (cons 1 (cons 2 (cons 3 nil))) 1 () = 2 => idp
+\func test_lookup_tail : lookup (cons 1 (cons 2 (cons 3 nil))) 2 () = 3 => idp
+
+\func test_replicate : replicate 1 3 = (1, (1, (1, ()))) => idp
+\func test_replicate' : replicate' 1 3 = (vcons 1 (vcons 1 (vcons 1 vnil))) => idp
+
+\func test_map : map {Nat} {Nat} {3} suc (1, (2, (3, ()))) = (2, (3, (4, ()))) => idp
+\func test_map' : map' suc (vcons 1 (vcons 2 (vcons 3 vnil))) = (vcons 2 (vcons 3 (vcons 4 vnil))) => idp
+
+\func test_zipWith : zipWith {Nat} {\Sigma} {3} (1, (2, (3, ()))) ((), ((), ((), ()))) = ((1, ()), ((2, ()), ((3, ()), ()))) => idp
+\func test_zipWith' : zipWith'  (vcons 1 (vcons 2 (vcons 3 vnil)))  (vcons () (vcons () (vcons () vnil))) =  (vcons (1, ()) (vcons (2, ()) (vcons (3, ()) vnil))) => idp
+
+\func test_toFin : toFin 2 = fsuc (fsuc fzero) => idp
+\func coin_f (a : Fin 3) : Nat
+  | fzero => 3
+  | fsuc fzero => 2
+  | fsuc (fsuc fzero) => 1
+  | fsuc (fsuc (fsuc ()))
+\func test_coin : coin coin_f = (vcons 1 (vcons 2 (vcons 3 vnil))) => idp
