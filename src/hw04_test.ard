@@ -1,5 +1,6 @@
 \import Utils
 \import hw04
+\import lect02 (+, *)
 \import lect04 (Fin, fsuc, fzero, vec)
 
 \func test_lookup_head : lookup (cons 1 (cons 2 (cons 3 nil))) 0 () = 1 => idp
@@ -22,3 +23,15 @@
   | fsuc (fsuc fzero) => 1
   | fsuc (fsuc (fsuc ()))
 \func test_coin : coin coin_f = (vcons 1 (vcons 2 (vcons 3 vnil))) => idp
+
+\func test_diag : diag 0 1 2 = vcons (vcons 1 (vcons 0 vnil)) (vcons (vcons 0 (vcons 1 vnil)) vnil) => idp
+
+\func test_transpose : transpose (vcons (vcons 1 (vcons 2 vnil)) (vcons (vcons 3 (vcons 4 vnil)) vnil)) = (vcons (vcons 1 (vcons 3 vnil)) (vcons (vcons 2 (vcons 4 vnil)) vnil)) => idp
+
+\func test_matAdd : matAdd (+) 2 2 (vcons (vcons 1 (vcons 2 vnil)) (vcons (vcons 3 (vcons 4 vnil)) vnil)) (vcons (vcons 1 (vcons 3 vnil)) (vcons (vcons 2 (vcons 4 vnil)) vnil))
+  = (vcons (vcons 2 (vcons 5 vnil)) (vcons (vcons 5 (vcons 8 vnil)) vnil)) => idp
+
+\func test_matMul : matMul 0 (+) (*) 1 2 2 (vcons (vcons 4 (vcons 3 vnil)) vnil) (vcons (vcons 1 (vcons 2 vnil)) (vcons (vcons 3 (vcons 4 vnil)) vnil))
+  = (vcons (vcons 13 (vcons 20 vnil)) vnil) => idp
+
+\func test_height : height 100 (Node 1 (Node 2 Leaf Leaf) Leaf) = fsuc (fsuc fzero) => idp

@@ -1,4 +1,6 @@
 \import Utils
+\import hw02 (if)
+\import lect02 (+)
 \import lect04
 
 -- 1. Напишите функцию lookup, которая принимает List A и натуральное число и возвращает элемент по заданому индексу.
@@ -71,35 +73,75 @@
 
 -- 6. Определите тип матриц и ряд функций над ними.
 
-\func Mat (A : \Type) (n m : Nat) : \Type => {?}
+\func Mat (A : \Type) (n m : Nat) : \Type => Vec (Vec A m) n
+
+-- вспомогательные функции
+\func push_front_row {A : \Type} {n m : Nat} (mat : Mat A n m) (row : Vec A m) : Mat A (suc n) m => vcons row mat
+\func map_rows {A B : \Type} {n m : Nat} (mat : Mat A n m) (f : Vec A m -> B) : Vec B n \elim n, mat
+  | 0, _ => vnil
+  | suc n, vcons row tail => vcons (f row) (map_rows tail f)
+\func head {A : \Type} {n : Nat} (v : Vec A (suc n)) : A \elim n, v
+  | _, vcons a v => a
+\func tail {A : \Type} {n : Nat} (v : Vec A (suc n)) : Vec A n \elim n, v
+  | _, vcons a v => v
 
 -- диагональная матрица с элементами e на диагонали и z на остальных позициях.
 
-\func diag {A : \Type} (z e : A) (n : Nat) : Mat A n n => {?}
+\func diag {A : \Type} (z e : A) (n : Nat) : Mat A n n \elim n
+  | 0 => vnil
+  | suc n => push_front_row (push_front_column_same_element (diag z e n) z) (vcons e (replicate' z n))
+    \where
+      \func push_front_column_same_element {A : \Type} {n m : Nat} (mat : Mat A n m) (element : A) : Mat A n (suc m) => map_rows mat (\lam row => vcons element row)
 
 -- транспонирование матриц
 
-\func transpose {A : \Type} {n m : Nat} (M : Mat A n m) : Mat A m n => {?}
+\func transpose {A : \Type} {n m : Nat} (M : Mat A n m) : Mat A m n \elim m
+  | 0 => vnil
+  | suc m' => push_front_row (transpose (map_rows M tail)) (map_rows M head)
 
 -- сложение матриц
 
-\func matAdd {A : \Type} (add : A -> A -> A) (n m : Nat) (M N : Mat A n m) : Mat A n m => {?}
+\func matAdd {A : \Type} (add : A -> A -> A) (n m : Nat) (M N : Mat A n m) : Mat A n m \elim  n, M, N
+  | 0, vnil, vnil => vnil
+  | suc n, vcons M_row M_rest, vcons N_row N_rest => vcons (rowAdd add M_row N_row) (matAdd add n m M_rest N_rest)
+    \where
+      \func rowAdd {A : \Type} {n : Nat} (add : A -> A -> A) (a b : Vec A n) : Vec A n \elim n, a, b
+        | 0, vnil, vnil => vnil
+        | suc n, vcons a v, vcons a1 v1 => vcons (add a a1) (rowAdd add v v1)
 
 -- умножение матриц
 
 -- z ─ нейтральный элемент по сложению.
-\func matMul {A : \Type} (z : A) (add mul : A -> A -> A) (n m k : Nat) (M : Mat A n m) (N : Mat A m k) : Mat A n k => {?}
+\func matMul {A : \Type} (z : A) (add mul : A -> A -> A) (n m k : Nat) (M : Mat A n m) (N : Mat A m k) : Mat A n k \elim n, M
+  | 0, vnil => vnil
+  | suc n, vcons M_row M_rest => vcons (map_rows (transpose N) (dot z add mul M_row)) (matMul z add mul n m k M_rest N)
+    \where
+      \func dot {A : \Type} {n : Nat} (z : A) (add mul : A -> A -> A) (a b : Vec A n) : A \elim n, a, b
+        | 0, vnil, vnil => z
+        | suc n, vcons a v, vcons a1 v1 => add (mul a a1) (dot z add mul v v1)
 
 -- 7. Определите тип CTree A n полных бинарных деревьев высоты ровно n, которые хранят элементы только во внутренних узлах, но не в листьях.
 --    Высота листа равна 0.
 
-\data CTree (A : \Type) (n : Nat)
+\data CTree (A : \Type) (n : Nat) \elim n
+  | 0 => CLeaf
+  | suc n => CNode A (CTree A n) (CTree A n)
 
 -- 8. Определите тип Tree A n бинарных деревьев высоты не больше n, которые хранят элементы только во внутренних узлах, но не в листьях.
 --    Высота листа равна 0.
 
-\data Tree (A : \Type) (n : Nat)
+\data Tree (A : \Type) (n : Nat) \elim n
+  | suc n => Node A (Tree A n) (Tree A n)
+  | _ => Leaf
 
 -- определите функцию, возвращающую высоту дерева.
 
-\func height {A : \Type} (n : Nat) (t : Tree A n) : Fin (suc n) => {?}
+\func height {A : \Type} (n : Nat) (t : Tree A n) : Fin (suc n) \elim n, t
+  | _, Leaf => fzero
+  | suc n, Node a l r => fsuc (max (height n l) (height n r))
+    \where
+      \func max {n : Nat} (a b : Fin n) : Fin n => \case ((toNat a) < (toNat b))
+        \with {
+        | true => b
+        | false => a
+      }
