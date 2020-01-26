@@ -63,6 +63,8 @@
   | suc n, fsuc a => fsuc (increaseSetSize a)
   | suc n, fzero => fzero
 
+-- Может быть, здесь еще нужен reverse, но я не смог найти в лекции функции, обратную к которой нам нужно реализовать,
+-- а добавить reverse, если потребуется, не так и сложно.
 \func coin {A : \Type} {n : Nat} (f : Fin n -> A) : Vec A n \elim n
   | 0 => vnil
   | suc n => vcons (f (toFin n)) (coin (\lam (g : Fin n) => f (increaseSetSize g)))
