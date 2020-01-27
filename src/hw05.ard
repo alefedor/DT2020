@@ -1,21 +1,23 @@
 \import Utils
+\import lect05 (funExt)
 \open Nat \hiding (<=)
 
 -- 1. Определите конгруэнтность для функций двух аргументов через transport.
 --    Можно использовать любые функции, определенные через transport.
 
-\func pmap2 {A B C : \Type} (f : A -> B -> C) {a a' : A} (p : a = a') {b b' : B} (q : b = b') : f a b = f a' b' => {?}
+\func pmap2 {A B C : \Type} (f : A -> B -> C) {a a' : A} (p : a = a') {b b' : B} (q : b = b') : f a b = f a' b'
+  => transport (\lam y => f a b = f a' y) q (pmap (\lam x => f x b) p)
 
 -- 2. Докажите, что transport выражается через pmap и repl и наоборот.
 
 -- repl говорит, что если у нас есть два равных типа, то у нас есть функция из одного во второй.
 -- Определите repl через transport.
 
-\func repl {A B : \Type} (p : A = B) (a : A) : B => {?}
+\func repl {A B : \Type} (p : A = B) (a : A) : B => transport (\lam x => x) p a
 
 -- Определите transport через repl и pmap.
 
-\func transport' {A : \Type} (B : A -> \Type) {a a' : A} (p : a = a') (b : B a) : B a' => {?}
+\func transport' {A : \Type} (B : A -> \Type) {a a' : A} (p : a = a') (b : B a) : B a' => repl (pmap B p) b
 
 -- 3. Докажите, что reverse (reverse xs) = xs, где reverse определен через ++.
 
@@ -29,8 +31,27 @@
   | nil => nil
   | cons x xs => reverse xs ++ cons x nil
 
+\func ++nil {A : \Type} (xs : List A) : xs = xs ++ nil \elim xs
+  | nil => idp
+  | cons a l => pmap (cons a) (++nil l)
+
+\func ++-assoc {A : \Type} (xs ys zs : List A) : (xs ++ ys) ++ zs = xs ++ (ys ++ zs) \elim xs
+  | nil => idp
+  | cons a l => pmap (cons a) (++-assoc l ys zs)
+
 -- Это утверждение будет полезно для доказательства.
-\func reverse++ {A : \Type} (xs ys : List A) : reverse (xs ++ ys) = reverse ys ++ reverse xs => {?}
+\func reverse++ {A : \Type} (xs ys : List A) : reverse (xs ++ ys) = reverse ys ++ reverse xs \elim xs
+  | nil => ++nil (reverse ys)
+  | cons a l => sym (
+    reverse ys ++ (reverse l ++ cons a nil) ==< sym (++-assoc (reverse ys) (reverse l) (cons a nil)) >==
+    (reverse ys ++ reverse l) ++ cons a nil ==< pmap (\lam l => l ++ cons a nil) (sym (reverse++ l ys)) >==
+    reverse (l ++ ys) ++ cons a nil `qed
+  )
+
+-- reverse (l ++ ys) ++ cons a nil = reverse ys ++ (reverse l ++ cons a nil)
+
+--  | nil => pmap reverse (++nil xs)
+--  | cons a l => {?}
 
 \func reverse-isInvolutive {A : \Type} (xs : List A) : reverse (reverse xs) = xs => {?}
 
@@ -64,9 +85,15 @@
   | true => false
   | false => true
 
-\func notNotId : (\lam x => not (not x)) = (\lam x => x) => {?}
+\func notNot (x : Bool) : not (not x) = x
+  | true => idp
+  | false => idp
+
+\func notNotId : (\lam x => not (not x)) = (\lam x => x) => funExt (\lam x => Bool) notNot
 
 -- 6. Определите факториал через Nat-rec.
+
+
 
 -- 7. Докажите ассоциативность сложения для натуральных чисел через Nat-elim.
 
@@ -95,7 +122,7 @@
 
 -- 12. Докажите, что left = right, не используя transport, coe и паттерн матчинг с idp.
 
-\func left=right : left = right => {?}
+\func left=right : left = right => path (\lam i => i)
 
 -- 13. Докажите, что если a = a' и b = b', то (a,b) = (a',b'), не используя transport, coe и паттерн матчинг с idp.
 
