@@ -1,5 +1,5 @@
 \import Utils
-\import lect05 (funExt)
+\import lect05 (+-assoc, +-comm, funExt)
 \open Nat \hiding (<=)
 
 -- 1. Определите конгруэнтность для функций двух аргументов через transport.
@@ -42,24 +42,30 @@
 -- Это утверждение будет полезно для доказательства.
 \func reverse++ {A : \Type} (xs ys : List A) : reverse (xs ++ ys) = reverse ys ++ reverse xs \elim xs
   | nil => ++nil (reverse ys)
-  | cons a l => sym (
-    reverse ys ++ (reverse l ++ cons a nil) ==< sym (++-assoc (reverse ys) (reverse l) (cons a nil)) >==
-    (reverse ys ++ reverse l) ++ cons a nil ==< pmap (\lam l => l ++ cons a nil) (sym (reverse++ l ys)) >==
-    reverse (l ++ ys) ++ cons a nil `qed
-  )
+  | cons a l => reverse (l ++ ys) ++ cons a nil ==< pmap (\lam l => l ++ cons a nil) ( (reverse++ l ys)) >==
+                (reverse ys ++ reverse l) ++ cons a nil ==< (++-assoc (reverse ys) (reverse l) (cons a nil)) >==
+                reverse ys ++ (reverse l ++ cons a nil) `qed
 
--- reverse (l ++ ys) ++ cons a nil = reverse ys ++ (reverse l ++ cons a nil)
-
---  | nil => pmap reverse (++nil xs)
---  | cons a l => {?}
-
-\func reverse-isInvolutive {A : \Type} (xs : List A) : reverse (reverse xs) = xs => {?}
+\func reverse-isInvolutive {A : \Type} (xs : List A) : reverse (reverse xs) = xs \elim xs
+  | nil => idp
+  | cons a l => reverse (reverse l ++ cons a nil) ==< reverse++ (reverse l) (cons a nil) >==
+                cons a (reverse (reverse l)) ==< pmap (cons a) (reverse-isInvolutive l)
 
 -- 4. Докажите дистрибутивность умножения над сложением для натуральных чисел.
 
-\func ldistr (n m k : Nat) : n * (m + k) = n * m + n * k => {?}
+\func ldistr (n m k : Nat) : n * (m + k) = n * m + n * k \elim k
+  | 0 => idp
+  | suc k => n * (m + k) + n ==< pmap (\lam x => x + n) (ldistr n m k) >==
+             n * m + n * k + n ==< +-assoc (n * m) (n * k) n
 
-\func rdistr (n m k : Nat) : (m + k) * n = m * n + k * n => {?}
+\func rdistr (n m k : Nat) : (m + k) * n = m * n + k * n \elim n
+  | 0 => idp
+  | suc n => (m + k) * n + (m + k) ==< pmap (\lam x => x + (m + k)) (rdistr n m k) >==
+              m * n +  k * n + (m + k) ==< +-assoc (m * n) (k * n) (m + k) >==
+              m * n + (k * n + (m + k)) ==< pmap (\lam x => m * n + x) (sym (+-assoc (k * n) m k)) >==
+              m * n + (k * n + m + k) ==< pmap (\lam x => m * n + (x + k)) (+-comm (k * n) m) >==
+              m * n + (m + k * n + k) ==< pmap (\lam x => m * n + x) (+-assoc m (k * n) k) >==
+              m * n + (m + (k * n + k)) ==< sym (+-assoc (m * n) m (k * n + k))
 
 {-
 -- rdistr можно реализовать через ldistr и *-comm.
@@ -108,7 +114,11 @@
 
 -- 10. Докажите, что 0 не равно suc x.
 
-\func zero/=suc (x : Nat) (p : 0 = suc x) : Empty => {?}
+\func TT' (n : Nat) : \Type \elim n
+  | 0 => \Sigma
+  | suc n => Empty
+
+\func zero/=suc (x : Nat) (p : 0 = suc x) : Empty => transport TT' p ()
 
 -- 11. Докажите, что fac не равен suc.
 
@@ -118,7 +128,13 @@
   | 0 => 1
   | suc n => suc n * fac n
 
-\func fac/=suc (p : fac = suc) : Empty => {?}
+\func TT (f : Nat -> Nat) : \Type => \case f 1 \with {
+  | 0 => \Sigma
+  | 1 => \Sigma
+  | suc n => Empty
+}
+
+\func fac/=suc (p : fac = suc) : Empty => transport TT p ()
 
 -- 12. Докажите, что left = right, не используя transport, coe и паттерн матчинг с idp.
 
@@ -126,24 +142,27 @@
 
 -- 13. Докажите, что если a = a' и b = b', то (a,b) = (a',b'), не используя transport, coe и паттерн матчинг с idp.
 
-\func pairEq {A B : \Type} {a a' : A} {b b' : B} (p : a = a') (q : b = b') : (a,b) = (a',b') => {?}
+\func pairEq {A B : \Type} {a a' : A} {b b' : B} (p : a = a') (q : b = b') : (a,b) = (a',b') => path (\lam i => (p @ i, q @ i))
 
 -- 14. Докажите, что если p = p', то p.1 = p'.1, не используя transport, coe и паттерн матчинг с idp.
 
-\func projEq {A : \Type} (B : A -> \Type) {p p' : \Sigma (x : A) (B x)} (t : p = p') : p.1 = p'.1 => {?}
+\func projEq {A : \Type} (B : A -> \Type) {p p' : \Sigma (x : A) (B x)} (t : p = p') : p.1 = p'.1 => path (\lam i => (t @ i).1)
 
 -- 15. Докажите pmap2, не используя transport, coe и паттерн матчинг с idp.
 
-\func pmap2' {A B C : \Type} (f : A -> B -> C) {a a' : A} (p : a = a') {b b' : B} (q : b = b') : f a b = f a' b' => {?}
+\func pmap2' {A B C : \Type} (f : A -> B -> C) {a a' : A} (p : a = a') {b b' : B} (q : b = b') : f a b = f a' b' =>  path (\lam i => f (p @ i) (q @ i))
 
 -- 16. Мы видели как определить transport через coe. Определите частный случай coe через transport.
 --     Можно ли определить transport через coe0?
 
-\func coe0 (A : I -> \Type) (a : A left) : A right => {?}
+\func coe0 (A : I -> \Type) (a : A left) : A right => transport A left=right a
 
 -- 17. Определите функцию B right -> B left.
 
-\func Itr' {B : I -> \Type} (b : B right) : B left => {?}
+\func Itr' {B : I -> \Type} (b : B right) : B left => helper (pmap B (left=right)) b
+    \where
+      \func helper {B : I -> \Type} (eq : B left = B right) (b : B right) : B left \elim eq
+        | idp => b
 
 -- 18. У оператора J есть другая форма, которую мы будем называть Jalt. Докажите, что J и Jalt эквивалентны, то есть выразите одно через другое и наоборот.
 
