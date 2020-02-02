@@ -1,5 +1,5 @@
 \import Utils
-\import lect05 (+-assoc, +-comm, funExt)
+\import lect05 (+-assoc, +-comm, Nat-elim, Nat-rec, funExt)
 \open Nat \hiding (<=)
 
 -- 1. Определите конгруэнтность для функций двух аргументов через transport.
@@ -99,9 +99,14 @@
 
 -- 6. Определите факториал через Nat-rec.
 
+\func fact (n : Nat) : Nat => Nat-rec Nat 1 (\lam x y => (suc x) * y) n
 
+\func test_fact_0 : fact 0 = 1 => idp
+\func test_fact : fact 3 = 6 => idp
 
 -- 7. Докажите ассоциативность сложения для натуральных чисел через Nat-elim.
+
+\func +-assoc''' (n m k : Nat) : (n + m) + k = n + (m + k) => Nat-elim (\lam k => (n + m) + k = n + (m + k)) idp (\lam _ eq => pmap suc eq) k
 
 -- 8. Определите рекурсор и элиминатор для D.
 
@@ -110,7 +115,45 @@
   | con2 D D
   | con3 (Nat -> D)
 
+\func D-elim (P : D -> \Type)
+             (c1 : \Pi (n : Nat) -> P (con1 n))
+             (c2 : \Pi (l r : D) -> P l -> P r -> P (con2 l r))
+             (c3 : \Pi (f : Nat -> D) -> (\Pi (n : Nat) -> P (f n)) -> P (con3 f))
+             (x : D) : P x
+\elim x
+  | con1 n => c1 n
+  | con2 l r => c2 l r (D-elim P c1 c2 c3 l) (D-elim P c1 c2 c3 r)
+  | con3 k => c3 k (\lam x => D-elim P c1 c2 c3 (k x))
+
+\func D-rec (P : \Type)
+            (c1 : Nat -> P)
+            (c2 : D -> D -> P -> P -> P)
+            (c3 : (Nat -> D) -> (Nat -> P) -> P)
+            (x : D) : P
+\elim x
+  | con1 n => c1 n
+  | con2 l r => c2 l r (D-rec P c1 c2 c3 l) (D-rec P c1 c2 c3 r)
+  | con3 k => c3 k (\lam x => D-rec P c1 c2 c3 (k x))
+
 -- 9. Определите рекурсор и элиминатор для List.
+
+\func List-elim {A : \Type}
+                (P : List A -> \Type)
+                (n : P nil)
+                (c : \Pi (elem : A) -> \Pi (tail : List A) -> P tail -> P (cons elem tail))
+                (x : List A) : P x
+\elim  x
+  | nil => n
+  | cons a l => c a l (List-elim P n c l)
+
+\func List-rec {A : \Type}
+               (P : \Type)
+               (n : P)
+               (c : A -> List A -> P -> P)
+               (x : List A) : P
+\elim x
+  | nil => n
+  | cons a l => c a l (List-rec P n c l)
 
 -- 10. Докажите, что 0 не равно suc x.
 
@@ -159,10 +202,7 @@
 
 -- 17. Определите функцию B right -> B left.
 
-\func Itr' {B : I -> \Type} (b : B right) : B left => helper (pmap B (left=right)) b
-    \where
-      \func helper {B : I -> \Type} (eq : B left = B right) (b : B right) : B left \elim eq
-        | idp => b
+\func Itr' {B : I -> \Type} (b : B right) : B left => transport B (sym left=right) b
 
 -- 18. У оператора J есть другая форма, которую мы будем называть Jalt. Докажите, что J и Jalt эквивалентны, то есть выразите одно через другое и наоборот.
 
@@ -170,7 +210,7 @@
 
 \func Jalt {A : \Type} (B : \Pi (a a' : A) -> a = a' -> \Type)
            (b : \Pi (a : A) -> B a a idp)
-           {a a' : A} (p : a = a') : B a a' p => {?}
+           {a a' : A} (p : a = a') : B a a' p => J (B a) (b a) p
 
 -- Выразите J через Jalt. Можно пользоваться только Jalt, idp и всем, что через них выражается.
 -- Hint:
