@@ -1,4 +1,5 @@
 \import Utils
+\import hw05 (zero/=suc)
 \import lect05 (+-comm)
 \import lect06 \hiding (<=-refl)
 \open Nat(+,*)
@@ -106,15 +107,25 @@
 
 \func isEven (n : Nat) => \Sigma (k : Nat) (n = 2 * k)
 
-\func notIsEven (n : Nat) : (isEven (suc (2 * n))) -> Empty
-  | 0 => {?}
-  | suc n => {?}
+\func \infixl 6 - (x y : Nat) : Nat
+  | 0, _ => 0
+  | suc x, 0 => suc x
+  | suc x, suc 0 => x -- cludge used only as support in this proof
+  | suc x, suc y => x - y
+
+\func notIsEven (n : Nat) : (isEven (suc (2 * n))) -> Empty => \lam p => helper n p.1 p.2
+    \where
+      \func helper (n : Nat) (k : Nat) (p : suc (2 * n) = 2 * k) : Empty \elim n, k
+        | 0, 0 => zero/=suc 0 (sym p)
+        | 0, suc n => zero/=suc (2 * n) (pmap (\lam x => x - 1) p)
+        | suc n, 0 => zero/=suc (suc (suc (2 * n))) (sym p)
+        | suc n, suc k => helper n k (pmap (\lam x => x - 2) p)
 
 \func isEven-dec : DecPred isEven => \lam (n : Nat) => helper n
     \where
       \func helper (n : Nat) : Decide (isEven n) => \case (parity n) \with {
         | even k p => yes (k, p)
-        | odd k p => no ({?}) -- transport (\lam x => {?}) p (notIsEven k)
+        | odd k p => no (transport (\lam x => Not (isEven x)) (sym p) (notIsEven k))
       }
 
 -- 13. Докажите, что если равенство элементов A разрешимо, то любой список элементов A либо пуст, либо состоит из повторений одного элемента, либо в A существует два различных элемента.
