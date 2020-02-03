@@ -5,11 +5,20 @@
 
 -- 1. Докажите, что vnil является нейтральным элементом для v++.
 
-\func vnil-rightId {A : \Type} {n : Nat} (xs : Vec A n) : transport (Vec A) (+-comm 0 n) (xs v++ vnil) = xs => {?}
+\func vnil-rightId {A : \Type} {n : Nat} (xs : Vec A n) : transport (Vec A) (+-comm 0 n) (xs v++ vnil) = xs \elim n, xs
+  | 0, vnil => idp
+  | suc n, vcons a v => lem' (v v++ vnil) a (+-comm 0 n) *> pmap (vcons a) (vnil-rightId v)
+  \where
+    \func lem' {A : \Type} {n : Nat} (xs : Vec A n) (a : A) {x : Nat} (p : n = x)
+      : transport (Vec A) (pmap suc p) (vcons a xs) = vcons a (transport (Vec A) p xs)
+    \elim p
+      | idp => idp
 
 -- 2. Определите предикат принадлежности элемента списку.
 
-\data In {A : \Type} (a : A) (xs : List A)
+\data In {A : \Type} (a : A) (xs : List A) \elim xs
+  | cons x tail => In-head (x = a)
+  | cons x tail => In-tail (In a tail)
 
 -- 3. Докажите эквивалентность четырех различных определений LessOrEq: lessOrEq, lessOrEq', LessOrEq и LessOrEq'.
 
@@ -17,23 +26,65 @@
 --    То есть ReflTransClosure R -- это минимальное рефлексивное и транзитивное отношение, содержащее R.
 
 \data ReflTransClosure {A : \Type} (R : A -> A -> \Type) (x y : A)
+  | Sym (x = y)
+  | Trans (z : A) (R x z) (ReflTransClosure R z y)
 
 -- 5. Докажите, что если R уже рекфлексивно и транзитивно, то ReflTransClosure R эквивалентно R.
 
 \func ReflTransClosure-lem {A : \Type} (R : A -> A -> \Type) (refl : \Pi (x : A) -> R x x) (trans : \Pi (x y z : A) -> R x y -> R y z -> R x z)
   : \Pi (x y : A) -> R x y <-> ReflTransClosure R x y
-  => {?}
+  => \lam x y => (lem1 R x y, lem2 R refl trans x y)
+  \where {
+    \func lem1 {A : \Type} (R : A -> A -> \Type) (x y : A) : R x y -> ReflTransClosure R x y => \lam r => Trans y r (Sym idp)
+
+    \func lem2 {A : \Type} (R : A -> A -> \Type)
+                           (refl : \Pi (x : A) -> R x x)
+                           (trans : \Pi (x y z : A) -> R x y -> R y z -> R x z)
+                           (x y : A) : ReflTransClosure R x y -> R x y
+      => \lam r => helper R refl trans x y r
+    \where
+      \func helper {A : \Type} (R : A -> A -> \Type)
+                               (refl : \Pi (x : A) -> R x x)
+                               (trans : \Pi (x y z : A) -> R x y -> R y z -> R x z)
+                               (x y : A) (r : ReflTransClosure R x y) : R x y \elim r
+        | Sym eq => transport (\lam y => R x y) eq (refl x)
+        | Trans z r rtc => trans x z y r (helper R refl trans z y rtc)
+  }
 
 -- 6. Определите предикат Sublist xs ys на списках, означающий "список xs является подсписком ys".
 
 -- 7. Докажите, что Sublist (filter p xs) xs для любых p и xs.
+\data Sublist {A : \Type} (xs ys : List A) \elim xs, ys
+  | nil, _ => AllMatched
+  | cons a xtail, cons b ytail => Matched (a = b) (Sublist xtail ytail)
+  | xs, cons _ ytail => NotMatched (Sublist xs ytail)
+
+-- 7. Докажите, что Sublist (filter xs) xs для любого списка xs.
+
+\func sublist_filter {A : \Type} : \Pi (xs : List A) -> \Pi (p : A -> Bool) -> Sublist (filter p xs) xs
+  => \lam xs p => helper xs p
+  \where
+    \func helper {A : \Type } (xs : List A) (p : A -> Bool) : Sublist (filter p xs) xs \elim xs
+      | nil => AllMatched
+      | cons a tail => \case p a \as b \return Sublist (\case b \with { | true => cons a (filter p tail) | false => filter p tail} ) (cons a tail) \with {
+        | true => Matched idp (helper tail p)
+        | false => NotMatched (helper tail p)
+      }
 
 -- 8. Реализуйте любой алгоритм сортировки, используя \case для паттерн матчинга на результате сравнения элементов списка.
+
+
 
 -- 9. Определите filter через if, а не через \case.
 --    Докажите для этой версии filter лемму filter-lem.
 
-\func filter' {A : \Type} (p : A -> Bool) (xs : List A) : List A => {?}
+\func if {A : \Type} (x : Bool) (t e : A) : A \elim x
+  | true => t
+  | false => e
+
+\func filter' {A : \Type} (p : A -> Bool) (xs : List A) : List A \elim xs
+  | nil => nil
+  | cons a l => if (p a) (cons a (filter' p l)) (filter' p l)
 
 \func filter-lem {A : \Type} (p : A -> Bool) (xs : List A) : length (filter' p xs) Nat.<= length xs => {?}
 
@@ -55,7 +106,16 @@
 
 \func isEven (n : Nat) => \Sigma (k : Nat) (n = 2 * k)
 
-\func isEven-dec : DecPred isEven => {?}
+\func notIsEven (n : Nat) : (isEven (suc (2 * n))) -> Empty
+  | 0 => {?}
+  | suc n => {?}
+
+\func isEven-dec : DecPred isEven => \lam (n : Nat) => helper n
+    \where
+      \func helper (n : Nat) : Decide (isEven n) => \case (parity n) \with {
+        | even k p => yes (k, p)
+        | odd k p => no ({?}) -- transport (\lam x => {?}) p (notIsEven k)
+      }
 
 -- 13. Докажите, что если равенство элементов A разрешимо, то любой список элементов A либо пуст, либо состоит из повторений одного элемента, либо в A существует два различных элемента.
 
