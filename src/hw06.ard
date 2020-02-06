@@ -1,3 +1,4 @@
+\import Prelude
 \import Utils
 \import hw05 (zero/=suc)
 \import lect05 (+-comm)
@@ -87,9 +88,31 @@
   | nil => nil
   | cons a l => if (p a) (cons a (filter' p l)) (filter' p l)
 
-\func filter-lem {A : \Type} (p : A -> Bool) (xs : List A) : length (filter' p xs) Nat.<= length xs => {?}
+\func filter-lem {A : \Type} (p : A -> Bool) (xs : List A) : length (filter' p xs) Nat.<= length xs \elim xs
+  | nil => Nat.zero<=_
+  | cons a xs => \case p a \as b \return
+  length (if b (cons a (filter' p xs)) (filter' p xs)) Nat.<= suc (length xs) \with {
+    | true => Nat.suc<=suc (filter-lem p xs)
+    | false => <=-helper (filter-lem p xs)
+  }
 
 -- 10. Закончите определение функции \func BoolFuncLem (f : Bool -> Bool) (x : Bool) : f (f (f x)) = f x из лекции.
+
+\func BoolFuncLem (f : Bool -> Bool) (x : Bool) : f (f (f x)) = f x =>
+  \case \elim x, f true \as p, idp : f true = p, f false \as q, idp : f false = q \with {
+    | true, true, ft, _, _ => pmap (\lam x => f (f x)) ft *> pmap f ft
+    | true, false, ft, true, ff => pmap (\lam x => f (f x)) ft *> pmap f ff
+    | false, _, ft, false, ff => pmap (\lam x => f (f x)) ff *> pmap f ff
+    | true, false, ft, false, ff => pmap (\lam x => f (f x)) ft *> helper f false ft ff (f false) true
+    | false, true, ft, true, ff => pmap (\lam x => f (f x)) ff *> helper f true ft ff (f true) false
+    | false, false, ft, true, ff => pmap (\lam x => f (f x)) ff *> pmap f ft
+  } \where
+    -- for constant function
+    \func helper (f : Bool -> Bool)  (b : Bool) (ft : f true = b) (ff : f false = b) (x y : Bool) : f x = f y \elim x, y
+      | true, true => idp
+      | true, false => transport (\lam x => f true = x) (sym ff) ft
+      | false, true => sym (transport (\lam x => f true = x) (sym ff) ft)
+      | false, false => idp
 
 -- 11. Парадокс Рассела показывает, что не существует множества всех множеств.
 -- Если такое множеств существует, то мы можем определить множество B, состоящее из множеств, не содержащих себя.
@@ -147,7 +170,13 @@
 \data ModView (m n : Nat)
   | quot-rem (q r : Nat) (t : r < m) (p : n = q * m + r)
 
-\func mod-view (m n : Nat) (t : 0 < m) : ModView m n => {?}
+\func mod-view (m n : Nat) (t : 0 < m) : ModView m n \elim n
+  | 0 => quot-rem 0 0 t (lemma m)
+  | suc n => {?}
+  \where
+    \func lemma (m : Nat) : 0 = 0 * m \elim m
+      | 0 => idp
+      | suc n => lemma n
 
 \func div (n m : Nat) (t : 0 < m) : Nat => {?}
 
