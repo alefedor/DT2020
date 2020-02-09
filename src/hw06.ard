@@ -1,8 +1,8 @@
 \import Prelude
 \import Utils
-\import hw05 (zero/=suc)
-\import lect05 (+-comm)
-\import lect06 \hiding (<=-refl)
+\import hw05 (pmap2, zero/=suc)
+\import lect05 (+-comm, funExt)
+\import lect06
 \open Nat(+,*)
 
 -- 1. Докажите, что vnil является нейтральным элементом для v++.
@@ -23,6 +23,50 @@
   | cons x tail => In-tail (In a tail)
 
 -- 3. Докажите эквивалентность четырех различных определений LessOrEq: lessOrEq, lessOrEq', LessOrEq и LessOrEq'.
+
+-- cycles:
+-- (lessOrEq -> lessOrEq' -> LessOrEq -> lessOrEq)
+-- (lessOrEq' -> LessOrEq' -> lessOrEq)
+
+\func lessOrEq_to_lessOrEq' {n m : Nat} (p : lessOrEq n m) : lessOrEq' n m
+  | {0}, {_}, p => ()
+  | {suc n}, {0}, (a, k) => zero/=suc (a + n) (sym k *> +-comm (suc n) a)
+  | {suc n}, {suc m}, (a, k) => \let p => suc (n + a) ==< pmap suc (+-comm n a) >==
+                                          suc (a + n) ==< +-comm a (suc n) >==
+                                          suc n + a ==< k >==
+                                          suc m `qed
+                                \in lessOrEq_to_lessOrEq' {n} {m} (a, pmap (\lam x => x - 1) p)
+
+\func lessOrEq'_to_LessOrEq {n m : Nat} (p : lessOrEq' n m) : LessOrEq n m
+  | {0}, {_}, p => z<=n
+  | {suc n}, {suc m}, p => s<=s (lessOrEq'_to_LessOrEq p)
+
+\func LessOrEq_to_lessOrEq {n m : Nat} (p : LessOrEq n m) : lessOrEq n m
+  | {0}, {0}, z<=n => (0, idp)
+  | {0}, {suc n}, z<=n => (suc n, idp *> pmap suc (+-comm 0 n))
+  | {suc n}, {suc m}, s<=s l => \let a => LessOrEq_to_lessOrEq l
+                                \in (a.1, lem a.2)
+  \where
+    \func lem {n m k : Nat} (p : n + m = k) : suc n + m = suc k
+      => suc n + m ==< +-comm (suc n) m >==
+         suc (m + n) ==< pmap suc (+-comm m n) >==
+         suc (n + m) ==< pmap suc p
+
+\func lessOrEq'_to_LessOrEq' {n m : Nat} (p : lessOrEq' n m) : LessOrEq' n m
+  | {0}, {0}, p => <=-refl idp
+  | {0}, {suc n}, p => <=-step (lessOrEq'_to_LessOrEq' p)
+  | {suc n}, {suc m}, p => add_suc (lessOrEq'_to_LessOrEq' p)
+    \where
+      \func add_suc {n m : Nat} (p : LessOrEq' n m) : LessOrEq' (suc n) (suc m)
+        | {_}, {_}, <=-refl = => <=-refl (pmap suc =)
+        | {0}, {suc n}, <=-step l => <=-step (add_suc l)
+        | {suc n}, {suc m}, <=-step l => <=-step (add_suc l)
+
+\func LessOrEq'_to_lessOrEq {n m : Nat} (p : LessOrEq' n m) : lessOrEq n m
+  | {_}, {_}, <=-refl = => (0, =)
+  | {0}, {suc m}, <=-step l => (suc m, idp *> pmap suc (+-comm 0 m))
+  | {suc n}, {suc m}, <=-step l => \let a => LessOrEq'_to_lessOrEq l
+                                   \in (suc a.1, pmap suc a.2)
 
 -- 4. Определите рефлексивное транзитивное замыкание отношения.
 --    То есть ReflTransClosure R -- это минимальное рефлексивное и транзитивное отношение, содержащее R.
@@ -75,7 +119,34 @@
 
 -- 8. Реализуйте любой алгоритм сортировки, используя \case для паттерн матчинга на результате сравнения элементов списка.
 
+\func extract_min {A : \Type} (list : List A) (current_min : A) (less : A -> A -> Bool) : \Sigma A (List A) => extract_min' list less current_min nil
+  \where
+    \func extract_min' {A : \Type} (list : List A) (less : A -> A -> Bool) (min : A) (rest : List A) : \Sigma A (List A) \elim list
+      | nil => (min, rest)
+      | cons a tail => \case (less min a) \with {
+        | true => (extract_min' tail less min (cons a rest))
+        | false =>(extract_min' tail less a (cons min rest))
+      }
+\func length {A : \Type } (list : List A)  : Nat
+  | nil => 0
+  | cons _ tail => length tail + 1
 
+-- selection sort
+\func sort {A : \Type} (list : List A) (less : A -> A -> Bool) : List A => sort' list less (length list)
+  \where
+    \func sort' {A : \Type} (list : List A) (less : A -> A -> Bool) (max_depth : Nat) : List A
+      | nil, _, _ => nil
+      | _, _, 0 => nil
+      | cons a tail, less, suc max_depth => \let (min, rest) => extract_min tail a less
+                                            \in cons min (sort' rest less max_depth)
+
+\func \infix 4 <p (x y : Nat) : Bool
+  | 0, 0 => false
+  | 0, suc y => true
+  | suc x, 0 => false
+  | suc x, suc y => x <p y
+
+\func test_sort : sort (cons 3 (cons 1 (cons 2 nil))) (<p) = (cons 1 (cons 2 (cons 3 nil))) => idp
 
 -- 9. Определите filter через if, а не через \case.
 --    Докажите для этой версии filter лемму filter-lem.
@@ -124,7 +195,7 @@
 -- Это легко доказать при помощи исключенного третьего, но утверждение верно и без него.
 -- Докажите этот факт.
 \func contrProp {A : \Type} (p : A -> Not A) (q : Not A -> A) : Empty
-  => {?}
+  => p (q (\lam a => (p a) a)) (q (\lam a => (p a) a))
 
 -- 12. Докажите, что предикат isEven разрешим.
 
@@ -162,7 +233,23 @@
   | repeated (n : Nat) (a : A) (p : xs = repeat n a)
   | A-is-not-trivial (a a' : A) (p : a = a' -> Empty)
 
-\func lemma {A : \Type} (xs : List A) {dec : DecEq A} : Result A xs => {?}
+\func lemma {A : \Type} (xs : List A) {dec : DecEq A} : Result A xs \elim xs
+  | nil => empty idp
+  | cons a nil => repeated 1 a idp
+  | cons a (cons a' l) => \case (dec a a') \with {
+    | yes eq => \case (lemma l {dec}) \with {
+      | empty p => repeated 2 a (pmap (\lam x => cons a x) (helper (sym eq) p))
+      | repeated n b p => \case (dec a b) \with {
+        | yes eq' => repeated (n + 2) a (pmap (\lam x => cons a x) (helper (sym eq) p *> (pmap (\lam x => cons a x) (transport (\lam x => repeat n x = repeat n a) eq' idp))))
+        | no n => A-is-not-trivial a b n
+      }
+      | A-is-not-trivial a a' p => A-is-not-trivial a a' p
+    }
+    | no n => A-is-not-trivial a a' n
+  }
+  \where
+    \func helper {A : \Type} {a a' : A} {l l' : List A} (p : a = a') (q : l = l') : cons a l = cons a' l'
+      => pmap2 (\lam x y => cons x y) p q
 
 -- 14. Определите view, представляющий число в виде частного и остатка от деления его на произвольное (неотрицательное) число m.
 --    Реализуйте функцию деления.
@@ -170,23 +257,57 @@
 \data ModView (m n : Nat)
   | quot-rem (q r : Nat) (t : r < m) (p : n = q * m + r)
 
+\func \infix 4 <=p (x y : Nat) : Bool
+  | 0, 0 => false
+  | 0, suc y => true
+  | suc x, 0 => false
+  | suc x, suc y => x <p y
+
+\func decide<= (m n : Nat) : Either (m Nat.<= n) (m Nat.<= n -> Empty) => {?}
+
 \func mod-view (m n : Nat) (t : 0 < m) : ModView m n \elim n
   | 0 => quot-rem 0 0 t (lemma m)
-  | suc n => {?}
+  | n => \case decide<= m n \with {
+            | inl a => {?}
+            | inr b => {?}
+          }
   \where
     \func lemma (m : Nat) : 0 = 0 * m \elim m
       | 0 => idp
       | suc n => lemma n
 
-\func div (n m : Nat) (t : 0 < m) : Nat => {?}
+\func div (n m : Nat) (t : 0 < m) : Nat => \case mod-view m n t \with {
+  | quot-rem q r t p => q
+}
 
 -- 15. Докажите, что функции FromBoolToDec и FromDecToBool взаимно обратны.
 
-\func bdb {A : \Type} (p : A -> Bool) : FromDecToBool (FromBoolToDec p) = p => {?}
+\func bdb {A : \Type} (p : A -> Bool) : FromDecToBool (FromBoolToDec p) = p
+  => funExt (\lam x => Bool) (\lam x => lem p x)
+      \where
+        \func lem {A : \Type} (p : A -> Bool) (a : A) : FromDecToBool (FromBoolToDec p) a = p a
+          => \case (p a) \as b \return ((\case \case \elim b \return (Decide (T b)) \with { | false => no absurd  | true => yes () } \with { | no _ => false | yes _ => true }) = b) \with {
+                | true => idp
+                | false => idp
+             }
 
 -- Мы не можем доказать, что FromBoolToDec (FromDecToBool P) = P, но мы можем доказать более слабое утверждение: эти предикаты логически эквивалентны.
 -- Для этого введем эквивалентность предикатов.
 
 \func dbd {A : \Type} (P : \Sigma (P : A -> \Type) (DecPred P))
   : \Pi (x : A) -> (FromBoolToDec (FromDecToBool P)).1 x <-> P.1 x
-  => {?}
+  => \lam x => (helper1 P x, helper2 P x)
+  \where {
+    \func helper1 {A : \Type} (P : \Sigma (P : A -> \Type) (DecPred P)) (x : A) : (FromBoolToDec (FromDecToBool P)).1 x -> P.1 x
+      => \case P.2 x \as d \return (T (\case d \with { | yes a => true | no n => false }) -> P.1 x) \with {
+            | yes a => \lam _ => a
+            | no n => \lam x => absurd x
+         }
+
+    \func helper2 {A : \Type} (P : \Sigma (P : A -> \Type) (DecPred P)) (x : A) : P.1 x -> (FromBoolToDec (FromDecToBool P)).1 x
+      => \case P.2 x \as d \return (P.1 x -> T (\case d \with { | yes a => true | no n => false })) \with {
+        | yes a => \lam _ => ()
+        | no n => \lam x => n x
+      }
+  }
+
