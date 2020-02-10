@@ -1,35 +1,79 @@
 \import Utils
-\import lect06 (Decide)
+\import hw02 (gcd)
+\import lect06 (Decide, no, yes)
 \import lect07
 
 -- 1. Определите функцию swap несколькими способами.
 
 -- При помощи \cowith и доступа к полям.
-\func swap {A B : \Type} (p : Pair A B) : Pair B A => {?}
+\func swap {A B : \Type} (p : Pair A B) : Pair B A \cowith
+  | fst_ => p.snd_
+  | snd_ => p.fst_
 
 -- При помощи \new и паттерн матчинга.
-\func swap' {A B : \Type} (p : Pair A B) : Pair B A => {?}
+\func swap' {A B : \Type} (p : Pair A B) : Pair B A \elim p
+  | (a,b) => \new Pair {
+    | fst_ => b
+    | snd_ => a
+  }
 
 -- При помощи \new и доступа к полям.
-\func swap'' {A B : \Type} (p : Pair A B) : Pair B A => {?}
+\func swap'' {A B : \Type} (p : Pair A B) : Pair B A => \new Pair { | fst_ => p.snd_ | snd_ => p.fst_}
 
 -- 2. Докажите, что swap (swap p) = p.
 
-\func swap-involutive {A B : \Type} (p : Pair A B) : swap (swap p) = p => {?}
+\func swap-involutive {A B : \Type} (p : Pair A B) : swap (swap p) = p \elim p
+  | (a,b) => idp
 
 -- 3. Докажите, что тип PosNat 0 пустой, а тип PosNat 1 нет.
 
-\func zero-isNotPos (p : PosNat 0) : Empty => {?}
+\func zero-isNotPos (p : PosNat 0) : Empty => p.p
 
-\func one-isPos : PosNat 1 => {?}
+\func one-isPos : PosNat 1 => \new PosNat 1 ()
 
 -- 4. Определите \record, состоящий из пар взаимно простых натуральных чисел.
 --    Определите тип, состоящий из натуральных чисел, взаимно простых с 60.
 
+\record CoprimeNats {
+  | A : Nat
+  | B : Nat
+  | proof : gcd A B = 1
+}
+
+\func Coprime60Nat (B : Nat) (proof : gcd 60 B = 1) : CoprimeNats => \new CoprimeNats 60 B proof
+
 -- 5. Докажите, что если равенство элементов A разрешимо, то и равенство элементов List A тоже разрешимо.
 
+\func TT {A : \Type} (a : List A) : \Type \elim a
+  | nil => \Sigma
+  | cons _ _ => Empty
+
+\func head {A : \Type} (b : A) (l : List A) : A \elim l
+  | nil => b
+  | cons a l => a
+
+\func tail {A : \Type} (l : List A) : List A \elim l
+  | nil => nil
+  | cons a l => l
+
 \instance ListEq {A : \Type} (dec : Eq A) : Eq (List A)
-  | decideEq => {?}
+  | decideEq => \lam a b => helper dec a b
+  \where
+    \func helper {A : \Type} (dec : Eq A) (a b : List A) : Decide (a = b) \elim a, b
+      | nil, nil => yes idp
+      | nil, cons a l => no (\lam p => transport TT p ())
+      | cons a l, nil => no (\lam p => transport TT (sym p) ())
+      | cons a l, cons b t =>
+          \case decideEq a b \with {
+            | yes y => \case helper dec l t \with {
+              | yes y' => yes (transport (\lam (x : List A) => cons a l = cons b x) y' (transport (\lam (x : A) => cons a l = cons x l) y idp ))
+              | no n => no (\lam f => n (pmap tail f))
+            }
+            | no n => no (lemma n l t)
+          }
+      \where
+        \func lemma {A : \Type} {a b : A} (p : a = b -> Empty) (l : List A) (t : List A) : cons a l = cons b t -> Empty
+          => \lam f => p (pmap (head a) f)
 
 -- 6. Закончите определение класса монад. Этот класс должен содержать все монадные законы и реализовывать все поля из класса функторов.
 
