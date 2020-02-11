@@ -99,13 +99,12 @@
 
 -- 6. Определите предикат Sublist xs ys на списках, означающий "список xs является подсписком ys".
 
--- 7. Докажите, что Sublist (filter p xs) xs для любых p и xs.
 \data Sublist {A : \Type} (xs ys : List A) \elim xs, ys
   | nil, _ => AllMatched
   | cons a xtail, cons b ytail => Matched (a = b) (Sublist xtail ytail)
   | xs, cons _ ytail => NotMatched (Sublist xs ytail)
 
--- 7. Докажите, что Sublist (filter xs) xs для любого списка xs.
+-- 7. Докажите, что Sublist (filter p xs) xs для любых p и xs.
 
 \func sublist_filter {A : \Type} : \Pi (xs : List A) -> \Pi (p : A -> Bool) -> Sublist (filter p xs) xs
   => \lam xs p => helper xs p
