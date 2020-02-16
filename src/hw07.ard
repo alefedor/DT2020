@@ -1,5 +1,6 @@
 \import Utils
 \import hw02 (gcd)
+\import lect05 (funExt)
 \import lect06 (Decide, no, yes)
 \import lect07
 
@@ -40,7 +41,7 @@
   | proof : gcd A B = 1
 }
 
-\func Coprime60Nat (B : Nat) (proof : gcd 60 B = 1) : CoprimeNats => \new CoprimeNats 60 B proof
+\func Coprime60Nat => CoprimeNats { | B => 60 }
 
 -- 5. Докажите, что если равенство элементов A разрешимо, то и равенство элементов List A тоже разрешимо.
 
@@ -79,16 +80,48 @@
 
 \class Monad \extends Functor
   | return {A : \Type} : A -> F A
-  | \infixl 1 >>= {A B : \Type} : F A -> (A -> F B) -> F B
+  | \infixl 2 >>= {A B : \Type} : F A -> (A -> F B) -> F B
+  -- Monad laws
+  | left-identity {A B : \Type} (a : A) (f : A -> F B) : (return a) >>= f = f a
+  | right-identity {A : \Type} (m : F A) : m >>= return = m
+  | associativity {A B C : \Type} (m : F A) (f : A -> F B) (g : B -> F C) : m >>= f >>= g = m >>= (\lam x => f x >>= g)
+  -- Functor fields
+  | fmap {A B : \Type} (f : A -> B) (m : F A) => m >>= (\lam x => return (f x))
+  | fmap-id {A : \Type} (y : F A) => right-identity y
+  | fmap-comp {A B C : \Type} (f : A -> B) (g : B -> C) (y : F A) =>
+      fmap (\lam x => g (f x)) y ==< sym (pmap (\lam x => y >>= x) (funExt (\lam x => F C) (\lam x => left-identity (f x) (\lam x => return (g x))))) >==
+      (y >>= (\lam x => return (f x) >>= (\lam x => return (g x)))) ==< sym (associativity y (\lam x => return (f x)) (\lam x => return (g x))) >==
+      fmap g (fmap f y) `qed
 
 -- 7. Определите \instance Monad для Maybe.
 
-\instance MaybeMonad : Monad Maybe => {?}
+\instance MaybeMonad : Monad Maybe
+  | return => just
+  | \infixl 2 >>= {A B : \Type} (x : Maybe A) (f : A -> Maybe B) : Maybe B \elim x {
+    | nothing => nothing
+    | just a => f a
+  }
+  | left-identity a f => idp
+  | right-identity {A : \Type} (m : Maybe A) : m >>= just = m \elim m {
+    | nothing => idp
+    | just x => idp
+  }
+  | associativity {A B C : \Type} (m : Maybe A) (f : A -> Maybe B) (g : B -> Maybe C) : m >>= f >>= g = m >>= (\lam x => f x >>= g) \elim m {
+    | nothing => idp
+    | just x => idp
+  }
 
 -- 8. Определите \instance Monad для State и State'.
 
 \record State (S A : \Type)
   | state : S -> \Sigma S A
+
+\instance StateMonad (S : \Type ): Monad (\lam A => State S A)
+  | return x => \new State { | state s => (s, x) }
+  | >>= x f => \new State { | state s => state { f (state {x} s).2} (state {x} s).1}
+  | left-identity a f => idp
+  | right-identity m => idp
+  | associativity m f g => idp
 
 \data State' (S A : \Type)
   | state' (S -> \Sigma S A)
