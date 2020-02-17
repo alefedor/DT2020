@@ -1,3 +1,6 @@
+\import Prelude
+\import hw06 (Sublist, sublist_filter)
+\import lect06 (filter)
 \import lect08
 \import Utils
 \open Nat(+,*)
@@ -7,27 +10,71 @@
 
 \func id' {A : \Type} (a : A) => a
 
-\func idTest1 => id' (id' id)
-\func idTest2 => id' Maybe
-\func idTest3 => id' Functor
-\func idTest4 => id' (Functor Maybe)
-\func idTest5 (f : \Pi {A B : \Type} -> (A -> B) -> Maybe A -> Maybe B) => id' (Functor Maybe f)
+\func idTest1 : \Pi (A : \Type \lp) -> A -> A => id' (\level (\suc \lp) _) (id' (\level (\suc \lp) _)  id)
+\func idTest2 : \Type \lp -> \Type \lp => id' (\level (\suc \lp) _) Maybe
+\func idTest3 : \Type (\suc \lp) => id' (\level (\suc (\suc \lp)) _) Functor
+\func idTest4 : \Type (\suc \lp) => id' (\level (\suc (\suc \lp)) _) (Functor Maybe)
+\func idTest5 (f : \Pi {A B : \Type \lp} -> (A -> B) -> Maybe A -> Maybe B) : \Type \lp => id' (\level (\suc \lp) _) (Functor Maybe f)
 
 -- 2. Определите div через Nat-ind.
 
-\func div (n k : Nat) (p : 0 < k) : Nat => {?}
+--\func div (x y : Nat) => div' x x y
+--  \where
+--    \func div' (s x y : Nat) : Nat \elim s
+--      | 0 => 0
+--      | suc s => if (x < y) 0 (suc (div' s (x - y) y))
+
+\func div (n k : Nat) (p : 0 < k) : Nat => Nat-ind (\lam _ => Nat) (helper n k) n
+    \where
+      \func helper (crutch : Nat) (m : Nat) (n : Nat) (p : \Pi (k : Nat) -> k < n -> Nat) : Nat \elim crutch
+        | 0 => 0
+        | suc n => {?} -- if (x < y)
 
 -- 3. Докажите следующий принцип индукции для списков.
+
+\func <zero {n : Nat} (p : n < 0) : Empty \elim p
 
 \func List-ind
   {A : \Type}
   (E : List A -> \Type)
   (r : \Pi (xs : List A) -> (\Pi (ys : List A) -> length ys < length xs -> E ys) -> E xs)
-  (xs : List A) : E xs => {?}
+  (xs : List A) : E xs \elim xs
+  | nil => r nil (\lam ys p => absurd (<zero p))
+  | cons a l => aux E r (cons a (cons a l)) (cons a l) <=-refl
+    \where
+      \func aux {A : \Type}
+                (E : List A -> \Type)
+                (r : \Pi (xs : List A) -> (\Pi (ys : List A) -> length ys < length xs -> E ys) -> E xs)
+                (xs zs : List A) (p : length zs < length xs): E zs \elim xs, p
+        | cons a l, Nat.suc<=suc zs<=xs => r zs (\lam  ys ys<zs => aux E r l ys (<=-trans ys<zs zs<=xs))
 
 -- 4. Реализуйте функцию filter и докажите ее корректность, то есть, что выполнены следующие условия:
 --    * filter p xs является подсписком xs
 --    * Все элементы filter p xs удовлетворяют предикату p
 --    * Любой подсписок xs с тем же свойством является подсписком filter p xs
 
+-- from hw06
+\func sublist_filter' {A : \Type} : \Pi (xs : List A) -> \Pi (p : A -> Bool) -> Sublist (filter p xs) xs => sublist_filter
+
+\data AllSatisfy {A : \Type} (xs : List A) (p : A -> Bool) \elim xs
+  | nil => nil-satisfy
+  | cons a xs => satisfy (p a = true) (AllSatisfy xs p)
+
+\func satisfy_filter {A : \Type} : \Pi (xs : List A) -> \Pi (p : A -> Bool) -> AllSatisfy (filter p xs) p
+  => \lam xs p => helper xs p
+      \where
+        \func helper {A : \Type } (xs : List A) (p : A -> Bool) : AllSatisfy (filter p xs) p \elim xs
+          | nil => nil-satisfy
+          | cons a tail => \case p a \as b, idp : p a = b \return AllSatisfy (\case b \with { | true => cons a (filter p tail) | false => filter p tail} ) p \with {
+            | true, eq => satisfy eq (helper tail p)
+            | false, _ => helper tail p
+          }
+
+\func satisfying_sublist_filter {A : \Type} : \Pi (xs ys : List A) -> \Pi (p : A -> Bool) -> Sublist ys xs -> AllSatisfy ys p -> Sublist ys (filter p xs)
+  => \lam xs ys p sublist allsatisfy => helper xs ys p sublist allsatisfy
+      \where
+        \func helper {A : \Type} (xs ys : List A) (p : A -> Bool) (sublist : Sublist ys xs) (allsatisfy : AllSatisfy ys p) : Sublist ys (filter p xs)
+          => {?     }
+
 -- 5. Бонусное задание: докажите корректность любого алгоритма сортировки, отличного от сортировки вставками.
+
