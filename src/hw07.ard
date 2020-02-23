@@ -127,6 +127,24 @@
 \data State' (S A : \Type)
   | state' (S -> \Sigma S A)
 
+\func State'_to_State {S A : \Type} (s : State' S A): State S A
+  | state' x => \new State { | state => x}
+
+\func State_to_State' {S A : \Type} (s : State S A): State' S A => state' (s.state)
+
+\func rev-lem-s'-s {S A : \Type} (s : State S A) : s = State'_to_State (State_to_State' s) \elim  s
+  | (state) => idp
+
+\func rev-lem-s-s' {S A : \Type} (s : State' S A) : s = State_to_State' (State'_to_State s) \elim s
+  | state' _x => idp
+
+\instance State'Monad (S : \Type): Monad (\lam A => State' S A)
+  | return x => State_to_State' (return x)
+  | >>= x f => State_to_State' (>>= (State'_to_State x) (\lam t => State'_to_State (f t)))
+  | left-identity a f => pmap State_to_State' (left-identity a (\lam t => State'_to_State (f t))) *> sym (rev-lem-s-s' (f a))
+  | right-identity m => pmap State_to_State' (right-identity (State'_to_State m)) *> sym (rev-lem-s-s' m)
+  | associativity m f g => idp
+
 -- 9. Определите \instance Monad для Term.
 
 \instance TermMonad : Monad Term
