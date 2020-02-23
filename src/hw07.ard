@@ -1,5 +1,6 @@
 \import Utils
 \import hw02 (gcd)
+\import hw05 (pmap2)
 \import hw06 (ReflTransClosure)
 \import lect05 (funExt)
 \import lect06 (Decide, no, yes)
@@ -148,11 +149,72 @@
 -- 9. Определите \instance Monad для Term.
 
 \instance TermMonad : Monad Term
-  | fmap => {?}
-  | fmap-id => {?}
-  | fmap-comp => {?}
-  | return => {?}
-  | >>= => {?}
+  | return => var
+  | \infixl 2 >>= {A B : \Type} (x : Term A) (f : A -> Term B) : Term B \elim x {
+    | var v => f v
+    | unit => unit
+    | app t t1 => app (t >>= f) (t1 >>= f)
+    | lam t => lam (t >>= shiftUpF f)
+  }
+  | left-identity a f => idp
+  | right-identity {A : \Type} (m : Term A) : m >>= var = m \with {
+    | var v => idp
+    | unit => idp
+    | app t t1 => pmap2 app (right-identity t) (right-identity t1)
+    | lam t => pmap lam (shiftUpLem t)
+  }
+  | associativity {A B C : \Type} (m : Term A) (f : A -> Term B) (g : B -> Term C) : m >>= f >>= g = m >>= (\lam x => f x >>= g) \with {
+    | var v, f, g => idp
+    | unit, f, g => idp
+    | app t t1, f, g => pmap2 app (associativity t f g) (associativity t1 f g)
+    | lam t, f, g => pmap lam (associativity t (shiftUpF f) (shiftUpF g) *> (pmap (\lam x => t >>= x) (shiftUpFLem t f g)))
+  }
+  \where {
+    \func shiftUp {A : \Type} (t : Term A) : Term (Maybe A)
+      | var v => var (just v)
+      | unit => unit
+      | app t t1 => app (shiftUp t) (shiftUp t1)
+      | lam t => lam (shiftUp t)
+
+    \func shiftUpF {A B : \Type} (f : A -> Term B) (a : Maybe A) : Term (Maybe B)
+      | f, nothing => var nothing
+      | f, just a => shiftUp (f a)
+
+    \func shiftUpLem {A : \Type} (t : Term (Maybe A)) : t >>= shiftUpF var = t
+      | var v => \case \elim v \with {
+        | nothing => idp
+        | just a => idp
+      }
+      | unit => idp
+      | app t t1 => pmap2 app (shiftUpLem t) (shiftUpLem t1)
+      | lam t => pmap lam (lem t *> shiftUpLem t)
+        \where {
+          \func lem {A : \Type} (t : Term (Maybe (Maybe A))) : t >>= shiftUpF (shiftUpF var) = t >>= shiftUpF var =>
+            transport (\lam x => t >>= shiftUpF x = t >>= shiftUpF var) (sym lem2) idp
+
+          \func lem2 {A : \Type} : shiftUpF {A} {A} var = var =>
+            funExt {Maybe A} (\lam x => Term (Maybe A)) {(shiftUpF {A} {A} var)} {var} (lem3)
+
+          \func lem3 {A : \Type} (x : Maybe A) : (shiftUpF {A} {A} var) (x) = var x \elim x
+            | nothing => idp
+            | just a => idp
+        }
+
+    \func shiftUpFLem {A B C : \Type} (t : Term (Maybe A)) (f : A -> Term B)  (g : B -> Term C) : (\lam x => shiftUpF f x >>= shiftUpF g) = shiftUpF (\lam x => f x >>= g)
+      => funExt (\lam x => Term (Maybe C)) (lem t f g)
+          \where {
+            \func lem {A B C : \Type} (t : Term (Maybe A)) (f : A -> Term B)  (g : B -> Term C) (x : Maybe A) : shiftUpF f x >>= shiftUpF g = shiftUpF (\lam x => f x >>= g) x
+              | _, f, g, nothing => idp
+              | _, f, g, just a => (lem2 f g a)
+            \func lem2 {A B C : \Type} (f : A -> Term B) (g : B -> Term C) (a : A) : shiftUp (f a) >>= shiftUpF g = shiftUp (f a >>= g) => lem3 (f a) g
+            \func lem3 {B C : \Type} (b : Term B) (g : B -> Term C) : shiftUp b >>= shiftUpF g = shiftUp (b >>= g) \elim b
+              | var v => idp
+              | unit => idp
+              | app t t1 => pmap2 app (lem3 t g) (lem3 t1 g)
+              | lam t => pmap lam (lem3 t (shiftUpF g))
+          }
+
+  }
 
 -- 10. Определите отношение многошаговой редукции на Term.
 
