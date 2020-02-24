@@ -1,5 +1,6 @@
 \import Prelude
-\import hw06 (Sublist, sublist_filter)
+\import hw06 (AllMatched, Matched, NotMatched, Sublist, sublist_filter)
+\import lect05 (true/=false)
 \import lect06 (filter)
 \import lect08
 \import Utils
@@ -73,8 +74,18 @@
 \func satisfying_sublist_filter {A : \Type} : \Pi (xs ys : List A) -> \Pi (p : A -> Bool) -> Sublist ys xs -> AllSatisfy ys p -> Sublist ys (filter p xs)
   => \lam xs ys p sublist allsatisfy => helper xs ys p sublist allsatisfy
       \where
-        \func helper {A : \Type} (xs ys : List A) (p : A -> Bool) (sublist : Sublist ys xs) (allsatisfy : AllSatisfy ys p) : Sublist ys (filter p xs)
-          => {?     }
+        \func helper {A : \Type} (xs ys : List A) (p : A -> Bool) (sublist : Sublist ys xs) (allsatisfy : AllSatisfy ys p) : Sublist ys (filter p xs) \elim xs, ys, sublist, allsatisfy
+          | nil, nil, AllMatched, nil-satisfy => AllMatched
+          | cons a l, nil, AllMatched, nil-satisfy => AllMatched
+          | cons a l, nil, NotMatched s, nil-satisfy => AllMatched
+          | cons x xs, cons y ys, Matched y=x s, satisfy py=true a => \case p x \as b, idp : p x = b \return Sublist (cons y ys) (\case b \with { | false => filter p xs | true => cons x (filter p xs) }) \with {
+            | true, _ => Matched y=x (helper xs ys p s a)
+            | false, px=false => absurd (true/=false ((sym py=true) *> (pmap p y=x) *> px=false))
+          }
+          | cons x xs, cons y ys, NotMatched s, satisfy py=true a => \case p x \as b \return Sublist (cons y ys) (\case b \with { | false => filter p xs | true => cons x (filter p xs) }) \with {
+            | true => NotMatched (helper xs (cons y ys) p s (satisfy py=true a))
+            | false => helper xs (cons y ys) p s (satisfy py=true a)
+          }
 
 -- 5. Бонусное задание: докажите корректность любого алгоритма сортировки, отличного от сортировки вставками.
 
