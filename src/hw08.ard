@@ -1,6 +1,6 @@
 \import Prelude
 \import hw06 (AllMatched, Matched, NotMatched, Sublist, sublist_filter)
-\import lect05 (true/=false)
+\import lect05 (+-comm, true/=false)
 \import lect06 (filter)
 \import lect08
 \import Utils
@@ -25,11 +25,44 @@
 --      | 0 => 0
 --      | suc s => if (x < y) 0 (suc (div' s (x - y) y))
 
-\func div (n k : Nat) (p : 0 < k) : Nat => Nat-ind (\lam _ => Nat) (helper n k) n
+\func \infixl 6 - (x y : Nat) : Nat
+  | 0, _ => 0
+  | suc x, 0 => suc x
+  | suc x, suc 0 => x -- cludge used only as support in this proof
+  | suc x, suc y => x - y
+
+\func n<=sucn (n : Nat) : n <= suc n
+  | 0 => Nat.zero<=_
+  | suc n => Nat.suc<=suc (n<=sucn n)
+
+\func zero<suc (n : Nat) : 0 < suc n \elim n
+  | 0 => <=-refl
+  | suc n => <=-trans (zero<suc n) (n<=sucn (suc n))
+
+\func div (n k : Nat) (p : 0 < k) : Nat => Nat-ind (\lam _ => Nat) (helper k p) n
     \where
-      \func helper (crutch : Nat) (m : Nat) (n : Nat) (p : \Pi (k : Nat) -> k < n -> Nat) : Nat \elim crutch
-        | 0 => 0
-        | suc n => {?} -- if (x < y)
+      \func helper (k : Nat) (p : 0 < k) (n : Nat) (pr : \Pi (k : Nat) -> k < n -> Nat) : Nat
+        | suc n, Nat.suc<=suc <, 0, pr => 0
+        | suc k, p, suc n, pr => \case totality (suc n) k \with {
+          | inl n<k => 0
+          | inr b => (pr (suc n - suc k) (lem (suc n) (suc k) (zero<suc n) p)) + 1
+        }
+        \where {
+          \func lem (n k : Nat) (pn : 0 < n) (pk : 0 < k) : n - k < n
+            | suc n, suc k, pn, pk => lem2 n k
+
+          \func lem2 (n k : Nat) : suc n - suc k < suc n
+            | 0, 0 => Nat.suc<=suc Nat.zero<=_
+            | 0, suc n => Nat.suc<=suc Nat.zero<=_
+            | suc n, 0 => Nat.suc<=suc <=-refl
+            | suc n, suc k => <=-trans (lem2 n k) (n<=sucn (suc n))
+        }
+
+\func test_div_0 : div 1 2 (Nat.suc<=suc Nat.zero<=_) = 0 => idp
+\func test_div_1 : div 2 2 (Nat.suc<=suc Nat.zero<=_) = 1 => idp
+\func test_div_2 : div 5 2 (Nat.suc<=suc Nat.zero<=_) = 2 => idp
+\func test_div_3 : div 6 2 (Nat.suc<=suc Nat.zero<=_) = 3 => idp
+
 
 -- 3. Докажите следующий принцип индукции для списков.
 
@@ -88,4 +121,38 @@
           }
 
 -- 5. Бонусное задание: докажите корректность любого алгоритма сортировки, отличного от сортировки вставками.
+
+--\func extract_min {A : TotalPreorder} (list : List A) (current_min : A) : \Sigma A (List A) => extract_min' list current_min nil
+--  \where
+--    \func extract_min' {A : TotalPreorder} (list : List A) (min : A) (rest : List A) : \Sigma A (List A) \elim list
+--      | nil => (min, rest)
+--      | cons a tail => \case totality min a \with {
+--        | inl _ => extract_min' tail min (cons a rest)
+--        | inr _ => extract_min' tail a (cons min rest)
+--      }
+--
+--
+--\func length {A : \Type } (list : List A)  : Nat
+--  | nil => 0
+--  | cons _ tail => length tail + 1
+--
+--\func extract_min_length_lem {A : TotalPreorder} (list : List A) (current_min : A) : length list = length (extract_min list current_min).2
+--  => extract_min'_length_lem list current_min nil
+--      \where
+--        \func extract_min'_length_lem {A : TotalPreorder} (list : List A) (min : A) (rest : List A) : length list + length rest = length ((extract_min.extract_min' list min rest).2)
+--          | nil, min, nil => idp
+--          | nil, min, cons a l => pmap suc (+-comm 0 (length l))
+--          | cons a l, min, nil => \case totality min a \as b \return (suc (length l) = length (\case b \with {| inl _ => extract_min.extract_min' l min (cons a nil) | inr _ => extract_min.extract_min' l a (cons min nil) }).2) \with {
+--            | inl a => {?}
+--            | inr b => {?}
+--          }
+--          | cons a l, min, cons a1 l1 => {?}
+--
+---- selection sort
+--\func sort {A : TotalPreorder} (list : List A): List A => sort' list (suc (length list)) (<=-refl)
+--  \where
+--    \func sort' {A : TotalPreorder} (list : List A) (max_depth : Nat) (dp : length list < max_depth) : List A
+--      | nil, suc n, Nat.suc<=suc < => nil
+--      | cons a tail, suc max_depth, Nat.suc<=suc dp => \let (min, rest) => extract_min tail a
+--                                       \in cons min (sort' rest max_depth {?})
 
