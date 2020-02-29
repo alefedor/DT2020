@@ -1,7 +1,7 @@
 \import Utils
 \import hw02 (gcd)
 \import hw05 (pmap2)
-\import hw06 (ReflTransClosure)
+\import hw06 (ReflTransClosure, Sym, Trans)
 \import lect05 (funExt)
 \import lect06 (Decide, no, yes)
 \import lect07
@@ -232,14 +232,33 @@
   : hasType ctx' (b >>= a) B
   => {?}
 
-\func substLem1 => {?}
+\func substLem1  {U : \Type} (ctx : U -> Type) (A B : Type) (a : Term U) (hasa : hasType ctx a A) (b : Term (Maybe U)) (hasb : hasType (maybe A ctx) b B)
+  : hasType ctx (b >>= maybe a var) B => {?}
 
 -- 13. Докажите, что если Г |- a : A и Red a a', то Г |- a' : A
 
 \func redLem {V : \Type} {ctx : V -> Type} {a a' : Term V} (r : Red a a') {A : Type} (h : hasType ctx a A)
-  : hasType ctx a' A
-  => {?}
+  : hasType ctx a' A \elim r
+  | Sym = => transport (\lam x => hasType ctx x A) = h
+  | Trans z r r1 => redLem r1 (lem r h)
+    \where
+      \func lem {V : \Type} {ctx : V -> Type} {a a' : Term V} (r : Red1 a a') {A : Type} (h : hasType ctx a A) : hasType ctx a' A \elim a, a', r, A, h
+        | app t t1, var v, beta f = =1, A, appType {Tp} h h1 => transport (\lam x => hasType ctx x A) =1 (substLem1 ctx Tp A t1 h f (getLeftArr f (lem2 f t = h1)))
+        | app t t1, unit, beta f = =1, A, appType {Tp} h h1 => transport (\lam x => hasType ctx x A) =1 (substLem1 ctx Tp A t1 h f (getLeftArr f (lem2 f t = h1)))
+        | app t t1, app t2 t3, appLeft r =, Arr t4 t5, appType {Tp} h h1 => appType (transport (\lam x => hasType ctx x Tp) = h) (lem r h1)
+        | app t t1, app t2 t3, appLeft r =, Unit, appType {Tp} h h1 => appType (transport (\lam x => hasType ctx x Tp) = h) (lem r h1)
+        | app t t1, app t2 t3, appRight = r, Arr t4 t5, appType {Tp} h h1 => appType (lem r h) (transport (\lam x => hasType ctx x (Arr Tp (Arr t4 t5))) = h1)
+        | app t t1, app t2 t3, appRight = r, Unit, appType {Tp} h h1 => appType (lem r h) (transport (\lam x => hasType ctx x (Arr Tp Unit)) = h1)
+        | app t t1, app t2 t3, beta f = =1, A, appType {Tp} h h1 => transport (\lam x => hasType ctx x A) =1 (substLem1 ctx Tp A t1 h f (getLeftArr f (lem2 f t = h1)))
+        | lam t, lam t1, lamRed r, Arr A A1, lamType l => lamType (lem r l)
+        | app t t1, lam t2, beta f = =1, A, appType {Tp} h h1 => transport (\lam x => hasType ctx x A) =1 (substLem1 ctx Tp A t1 h f (getLeftArr f (lem2 f t = h1)))
+        \where {
+          \func getLeftArr {V : \Type} {ctx : V -> Type} {A Tp : Type} (t : Term (Maybe V)) (h : hasType ctx (lam t) (Arr Tp A)) : hasType (maybe Tp ctx) t A \elim h
+            | lamType h => h
 
+          \func lem2 {V : \Type} {ctx : V -> Type}  {A Tp : Type} (f : Term (Maybe V)) (t : Term V) (= : lam f = t) (h1 : hasType ctx t (Arr Tp A)) : hasType ctx (lam f) (Arr Tp A)
+            => (transport (\lam x => hasType ctx x (Arr Tp A)) (sym =)  h1)
+        }
 -- 14. Закончите доказательство утверждения, что все типизируемые термы достижимы.
 
 -- Это более общее утверждение необходимо для усиления индукционной гипотезы.
