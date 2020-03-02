@@ -1,3 +1,4 @@
+\import hw05 (zero/=suc)
 \import lect06
 \import lect09
 \import Utils
@@ -9,9 +10,11 @@
 -- Композиция функций
 \func \fixr 9 o {A B C : \Type} (g : B -> C) (f : A -> B) => \lam a => g (f a)
 
-\func o-inj {A B C : \Type} (f : A -> B) (g : B -> C) (p : isInj f) (q : isInj g) : isInj (g `o` f) => {?}
+\func o-inj {A B C : \Type} (f : A -> B) (g : B -> C) (p : isInj f) (q : isInj g) : isInj (g `o` f)
+  => \lam x y k => p x y (q (f x) (f y) k)
 
-\func o-inj' {A B C : \Type} (f : A -> B) (g : B -> C) (p : isInj (g `o` f)) : isInj f => {?}
+\func o-inj' {A B C : \Type} (f : A -> B) (g : B -> C) (p : isInj (g `o` f)) : isInj f
+  => \lam x y k => p x y (pmap g k)
 
 -- 2. Определите предикат "делится на 3 или на 5" так, чтобы он возвращал утверждения.
 --    Докажите, что MultipleOf3Or5 вкладывается в ℕ.
@@ -33,18 +36,29 @@
 
 \func \infix 1 <-> (A B : \Type) => \Sigma (A -> B) (B -> A)
 
-\func isTriv-lem (A : \Type) : isTriv A <-> (\Sigma (isProp A) A) => {?}
+\func isTriv-lem (A : \Type) : isTriv A <-> (\Sigma (isProp A) A) => (lem1, lem2)
+  \where {
+    \func lem1 {A : \Type} : isTriv A -> (\Sigma (isProp A) A) => \lam x => (lem3 x, lem4 x)
+    \func lem2 {A : \Type} : (\Sigma (isProp A) A) -> isTriv A => \lam p => (p.2, (\lam x => p.1 p.2 x))
+    \func lem3 {A : \Type} (p : isTriv A) : isProp A => \lam x y => (sym (p.2 x)) *> idp *> (p.2 y)
+    \func lem4 {A : \Type} (p : isTriv A) : A => p.1
+  }
 
 -- 4. Докажите, что Either не является утверждением в общем случаем.
 
-\func Either-isProp (p : \Pi {A B : \Type} (pA : isProp A) (pB : isProp B) -> isProp (Either A B)) : Empty => {?}
+\func TT (a : Either (\Sigma) (\Sigma))  : \Type \elim a
+  | Either.inl _ => \Sigma
+  | Either.inr _ => Empty
+
+\func Either-isProp (p : \Pi {A B : \Type} (pA : isProp A) (pB : isProp B) -> isProp (Either A B)) : Empty
+  => transport TT ((p (Unit-isProp) (Unit-isProp)) (Either.inl ()) (Either.inr ())) ()
 
 -- 5. Докажите, что \Sigma сохраняет утверждения.
 
-\func Sigma-isProp {A : \Type} (pA : isProp A) (B : A -> \Type)
+\func Sigma-isProp' {A : \Type} (pA : isProp A) (B : A -> \Type)
                     (pB : \Pi (x : A) -> isProp (B x))
   : isProp (\Sigma (x : A) (B x))
-  => {?}
+  => \lam p q => sigmaEq B p q (pA p.1 q.1) (sym (pB q.1 q.2 (transport B ((pA p.1 q.1)) p.2)))
 
 -- 6. Докажите, что LessOrEq и LessOrEq' являются предикатами.
 
@@ -56,13 +70,56 @@
   | suc m => <=-step (LessOrEq' n m)
   | m => <=-refl (n = m)
 
-\func LessOrEq-isProp {n m : Nat} : isProp (LessOrEq n m) => {?}
+\func LessOrEq-isProp {n m : Nat} : isProp (LessOrEq n m) => \lam x y => lem x y
+    \where
+      \func lem {n m : Nat} (x y : LessOrEq n m) : x = y
+        | {0}, {0}, z<=n, z<=n => idp
+        | {0}, {suc n}, z<=n, z<=n => idp
+        | {suc n}, {suc m}, s<=s p, s<=s q => pmap s<=s (lem p q)
+
+\func decideEqNat : \Pi (n m : Nat) -> Decide (n = m) => \lam n m => lem n m
+    \where
+      \func lem (n m : Nat) : Decide (n = m)
+        | 0, 0 => yes idp
+        | 0, suc n => no (zero/=suc n)
+        | suc n, 0 => no (\lam x => zero/=suc n (sym x))
+        | suc n, suc m => \case (lem n m) \with {
+          | yes a => yes (pmap suc a)
+          | no n => no (\lam p => n (pmap unsuc p))
+        }
 
 -- Для решения LessOrEq'-isProp понадобится тот факт, что Nat является множеством.
 -- Сейчас доказывать это не нужно доказывать, доказательство будет приведено позже.
-\func Nat-isSet : isSet Nat => {?}
+\func Nat-isSet : isSet Nat => Dec-isSet decideEqNat
 
-\func LessOrEq'-isProp {n m : Nat} : isProp (LessOrEq' n m) => {?}
+\func n/=sucn {n : Nat} (p : n = suc n) : Empty \elim n
+  | 0 => zero/=suc 0 p
+  | suc n => n/=sucn (pmap unsuc p)
+
+\func unsuc (n : Nat) : Nat
+  | 0 => 0
+  | suc n => n
+
+\func down {n m : Nat} (l : LessOrEq' (suc n) m) : LessOrEq' n m \elim m, l
+  | 0, <=-refl = => absurd (zero/=suc n (sym =))
+  | suc m, <=-step l => <=-step (down l)
+  | suc m, <=-refl = => <=-step (<=-refl (pmap unsuc =))
+
+\func LessOrEq'-isProp {n m : Nat} : isProp (LessOrEq' n m) => \lam x y => lem x y
+    \where {
+      \func lem {n m : Nat} (x y : LessOrEq' n m) : x = y
+        | {n}, {m}, <=-refl =, <=-refl =1 => pmap <=-refl ((Nat-isSet n m) = =1)
+        | {n}, {suc m}, <=-step l, <=-step l1 => pmap <=-step (lem l l1)
+        | {n}, {suc m}, <=-step l, <=-refl = => absurd (lem2 = l)
+        | {n}, {suc m}, <=-refl =, <=-step l => absurd (lem2 = l)
+
+      \func lem2 {n m : Nat} (p : n = suc m) (l : LessOrEq' n m) : Empty \elim n, m, l
+        | n, 0, <=-refl = => absurd (zero/=suc 0 ((sym =) *> p))
+        | 0, suc m, <=-step l => absurd (zero/=suc (suc m) p)
+        | suc n, suc m, <=-step l => lem2 (pmap unsuc p) (down l)
+        | n, suc m, <=-refl = => absurd (n/=sucn ((sym =) *> p))
+    }
+
 
 -- 7. Докажте, что ReflClosure LessOrEq не является предикатом, а ReflClosure (\lam x y => T (x < y)) является.
 
@@ -75,7 +132,22 @@
   | refl (x = y)
   | inc (R x y)
 
-\func ReflClosure_<-isProp (n m : Nat) : isProp (ReflClosure (\lam x y => T (x < y)) n m) => {?}
+\func ReflClosure_<-isProp (n m : Nat) : isProp (ReflClosure (\lam x y => T (x < y)) n m) => \lam x y => lem n m x y
+    \where {
+      \func lem (n m : Nat) (x y : ReflClosure (\lam x y => T (x < y)) n m) : x = y \elim x, y
+        | refl =, refl =1 => pmap refl (Nat-isSet n m = =1)
+        | refl =, inc r => absurd (lem2 = r)
+        | inc r, refl = => absurd (lem2 = r)
+        | inc r, inc r1 => pmap inc T-lem
+
+      \func lem2 {n m : Nat} (p : n = m) (r : T (n < m)) : Empty \elim n, m, r
+        | 0, suc m, r => absurd (zero/=suc m p)
+        | suc n, suc m, r => lem2 (pmap unsuc p) r
+    }
+
+\func TT' {n m : Nat} (a : ReflClosure LessOrEq n m) : \Type \elim a
+  | refl = => \Sigma
+  | inc r => Empty
 
 \func ReflClosure_<=-isNotProp (p : \Pi (n m : Nat) -> isProp (ReflClosure LessOrEq n m)) : Empty => {?}
 
