@@ -146,10 +146,10 @@
     }
 
 \func TT' {n m : Nat} (a : ReflClosure LessOrEq n m) : \Type \elim a
-  | refl = => \Sigma
-  | inc r => Empty
+  | refl = => Empty
+  | inc r => \Sigma
 
-\func ReflClosure_<=-isNotProp (p : \Pi (n m : Nat) -> isProp (ReflClosure LessOrEq n m)) : Empty => {?}
+\func ReflClosure_<=-isNotProp (p : \Pi (n m : Nat) -> isProp (ReflClosure LessOrEq n m)) : Empty => transport TT' (p 1 1 (inc (s<=s z<=n)) (refl idp)) ()
 
 -- 8. Докажите, что если тип A вкладывается в тип B и B является утверждением, то и A является утверждением.
 
