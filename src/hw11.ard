@@ -3,7 +3,16 @@
 
 -- 1. Определите функцию negPred : Int -> Int такую, что negPred x = x, если x > 0, и negPred x = x - 1, если x <= 0.
 
-\func negPred (x : Int) : Int => {?}
+\func negPred (x : Int) : Int \elim x
+  | pos n => \case \elim n \with {
+    | 0 => neg 1
+    | suc n => pos (suc n)
+  }
+  | neg n => neg (suc n)
+
+\func negPred_test0 : negPred (pos 0) = neg 1 => idp
+\func negPred_test1 : negPred (pos 1) = pos 1 => idp
+\func negPred_test2 : negPred (neg 1) = neg 2 => idp
 
 -- 2. Определите функции сложения и умножения для Int.
 
