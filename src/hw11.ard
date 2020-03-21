@@ -1,4 +1,6 @@
 \import Utils
+\import hw05 (zero/=suc)
+\import lect02 ()
 \import lect11
 
 -- 1. Определите функцию negPred : Int -> Int такую, что negPred x = x, если x > 0, и negPred x = x - 1, если x <= 0.
@@ -16,9 +18,33 @@
 
 -- 2. Определите функции сложения и умножения для Int.
 
-\func \infixl 6 + (x y : Int) : Int => {?}
+\func \infixl 6 + (x y : Int) : Int
+  | pos n, pos m => pos (n Nat.+ m)
+  | pos n, neg (suc m) => \case n lect02.< (suc m) \with {
+    | lect02.Bool.false => pos (n lect02.- suc m)
+    | lect02.Bool.true => neg (suc m lect02.- n)
+  }
+  | neg (suc n), pos m => \case m lect02.< (suc n) \with {
+    | lect02.Bool.false => pos (m lect02.- suc n)
+    | lect02.Bool.true => neg (suc n lect02.- m)
+  }
+  | neg (suc n), neg (suc m) => neg ((suc n) Nat.+ (suc m))
 
-\func \infixl 7 * (x y : Int) : Int => {?}
+\func \infixl 7 * (x y : Int) : Int
+  | pos n, pos m => pos (n Nat.* m)
+  | pos n, neg (suc m) => neg (n Nat.* suc m)
+  | neg (suc n), pos m => neg ((suc n) Nat.* m)
+  | neg (suc n), neg (suc m) => pos ((suc n) Nat.* suc m)
+
+\func +_test0 : neg 1 + pos 1 = pos 0 => idp
+\func +_test1 : neg 2 + pos 1 = neg 1 => idp
+\func +_test2 : pos 2 + pos 1 = pos 3 => idp
+\func +_test3 : neg 1 + neg 3 = neg 4 => idp
+
+\func *_test0 : neg 1 * neg 1 = pos 1 => idp
+\func *_test1 : pos 2 * neg 1 = neg 2 => idp
+\func *_test2 : neg 3 * neg 2 = pos 6 => idp
+\func *_test3 : neg 6 * pos 0 = pos 0 => idp
 
 -- 3. Определите тип данных BinNat для бинарных натуральных чисел.
 --    У него должно быть три конструктора: для 0, для чисел вида 2*n и чисел вида 2*n+1.
@@ -26,6 +52,16 @@
 --    Используйте типы данных с условиями, чтобы вычислительно отождествить различные нули.
 
 \data BinNat
+  | zero
+  | n*2 (n : BinNat) \elim n {
+    | zero => zero
+  }
+  | n*2+1 (n : BinNat)
+
+\func z0 => zero
+\func z1 => n*2 zero
+
+\func BinNat_test : z0 = z1 => idp
 
 -- 4. Докажите, что функция pred сюръективна.
 
@@ -33,11 +69,13 @@
   | 0 => 0
   | suc n => n
 
-\func pred-is-sur : isSur pred => {?}
+\func pred-is-sur : isSur pred => \lam x => in (suc x, idp)
 
 -- 5. Докажите, что функция suc не сюръективна.
 
-\func suc-is-not-sur (p : isSur suc) : Empty => {?}
+\func suc-is-not-sur (p : isSur suc) : Empty => \case p 0 \with {
+  | in e => zero/=suc e.1 (sym e.2)
+}
 
 -- 6. Пусть f : A -> B и g : B -> C ─ некоторые функции.
 --    Докажите, что если f и g сюръективны, то g `o` f также сюръективна.
@@ -45,13 +83,17 @@
 
 \func \fixr 9 o {A B C : \Type} (g : B -> C) (f : A -> B) => \lam a => g (f a)
 
-\func o-sur {A B C : \Type} (f : A -> B) (g : B -> C) (p : isSur f) (q : isSur g) : isSur (g `o` f) => {?}
+\func o-sur {A B C : \Type} (f : A -> B) (g : B -> C) (p : isSur f) (q : isSur g) : isSur (g `o` f)
+  => \lam x => \case q x \with { | in a => \case p a.1 \with { | in b => in (b.1, pmap g b.2 *> a.2) } }
 
-\func o-sur' {A B C : \Type} (f : A -> B) (g : B -> C) (p : isSur (g `o` f)) : isSur g => {?}
+\func o-sur' {A B C : \Type} (f : A -> B) (g : B -> C) (p : isSur (g `o` f)) : isSur g
+  => \lam x => \case p x \with { | in a => in (f a.1, a.2) }
 
 -- 7. Определите множество конечных подмножеств множества A, то есть списков элементов A с точностью до перестановок и повторений элементов.
 
-\data Set (A : \Set) : \Set
+\func EqList {A : \Set} (xs ys : List A) => \Pi (x : A) -> In x xs <-> In x ys
+
+\func Set (A : \Set) : \Set => Quotient (List A) EqList
 
 -- 8. Докажите теорему Кантора.
 
